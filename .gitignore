@@ -1,0 +1,76 @@
+# Visual Studio / ASP.NET Core .gitignore
+
+## Build results
+[Bb]in/
+[Oo]bj/
+artifacts/
+publish/
+*.Publish.xml
+
+## Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+## Rider
+.idea/
+*.sln.iml
+
+## VS Code
+.vscode/
+
+## NuGet
+packages/
+*.nupkg
+.nuget/packages/
+
+## Dotnet
+project.lock.json
+project.fragment.lock.json
+global.json.lock
+
+## Runtime / publish outputs
+*.dll
+*.exe
+*.app
+*.appx
+*.msix
+*.zip
+
+## Logs
+*.log
+*.tlog
+TestResults/
+coverage/
+*.coverage
+*.coveragexml
+coverage.xml
+
+## User secrets
+secrets.json
+
+## Entity Framework / Local DB
+*.mdf
+*.ldf
+App_Data/
+
+## OS generated
+.DS_Store
+Thumbs.db
+desktop.ini
+
+## JetBrains / ReSharper
+_ReSharper*/
+*.DotSettings.user
+.idea/
+
+## Temporary files
+*.tmp
+*.temp
+
+## Other
+.env
+node_modules/
+bower_components/
