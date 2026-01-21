@@ -1,12 +1,9 @@
-using Core.Application.Features.Users.Commands.AssignPermissions;
-using Core.Application.Features.Users.Commands.AssignRoles;
-using Core.Application.Features.Users.Queries.GetUserPermissions;
-using Core.Application.Features.Users.Queries.GetUserRoles;
+using Auth.Application.Features.Auth.Commands.Requests;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Auth.Api.Controllers;
+namespace Auth.Api.Controllers.AuthControllers;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -23,8 +20,8 @@ public class UsersController : ControllerBase
     [HttpPost("{userId}/permissions")]
     [Authorize(Policy = "AdminCanDeleteUsers")]
     public async Task<IActionResult> AssignPermissions(
-        string userId, 
-        [FromBody] string[] permissions)
+        Guid userId, 
+        [FromBody] Guid[] permissions)
     {
         var command = new AssignPermissionsCommand
         {
@@ -40,43 +37,43 @@ public class UsersController : ControllerBase
         return Ok(result);
     }
     
-    [HttpGet("{userId}/permissions")]
-    [Authorize(Policy = "CanViewReports")]
-    public async Task<IActionResult> GetUserPermissions(string userId)
-    {
-        var query = new GetUserPermissionsQuery { UserId = userId };
-        var result = await _mediator.Send(query);
+    // [HttpGet("{userId}/permissions")]
+    // [Authorize(Policy = "CanViewReports")]
+    // public async Task<IActionResult> GetUserPermissions(Guid userId)
+    // {
+    //     var query = new GetUserPermissionsQuery { UserId = userId };
+    //     var result = await _mediator.Send(query);
         
-        return Ok(result);
-    }
+    //     return Ok(result);
+    // }
     
-    [HttpPost("{userId}/roles")]
-    [Authorize(Policy = "RequireAdmin")]
-    public async Task<IActionResult> AssignRoles(
-        string userId, 
-        [FromBody] string[] roles)
-    {
-        var command = new AssignRolesCommand
-        {
-            UserId = userId,
-            Roles = roles
-        };
+    // [HttpPost("{userId}/roles")]
+    // [Authorize(Policy = "RequireAdmin")]
+    // public async Task<IActionResult> AssignRoles(
+    //     string userId, 
+    //     [FromBody] string[] roles)
+    // {
+    //     var command = new AssignRolesCommand
+    //     {
+    //         UserId = userId,
+    //         Roles = roles
+    //     };
         
-        var result = await _mediator.Send(command);
+    //     var result = await _mediator.Send(command);
         
-        if (!result.Succeeded)
-            return BadRequest(result);
+    //     if (!result.Succeeded)
+    //         return BadRequest(result);
         
-        return Ok(result);
-    }
+    //     return Ok(result);
+    // }
     
-    [HttpGet("{userId}/roles")]
-    [Authorize(Policy = "RequireManager")]
-    public async Task<IActionResult> GetUserRoles(string userId)
-    {
-        var query = new GetUserRolesQuery { UserId = userId };
-        var result = await _mediator.Send(query);
+    // [HttpGet("{userId}/roles")]
+    // [Authorize(Policy = "RequireManager")]
+    // public async Task<IActionResult> GetUserRoles(string userId)
+    // {
+    //     var query = new GetUserRolesQuery { UserId = userId };
+    //     var result = await _mediator.Send(query);
         
-        return Ok(result);
-    }
+    //     return Ok(result);
+    // }
 }

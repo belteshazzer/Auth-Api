@@ -1,30 +1,31 @@
 using MediatR;
 using Auth.Application.Features.Auth.Commands.Requests;
-using System.IO.Pipelines;
 using System.ComponentModel.DataAnnotations;
+using Auth.Application.Common.Models;
+using Auth.Application.Interfaces.Auth;
+using Auth.Domain.Entities.Auth;
+using AutoMapper;
 
 namespace Auth.Application.Features.Auth.Commands.Handlers;
 
-public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Guid>
+public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Guid?>
 {
     private readonly IAuthService _authService;
-    private readonly IJwtService _jwtService;
     private readonly IMapper _mapper;
 
-    public RegisterCommandHandler(IAuthService authService, IJwtService jwtService, IMapper mapper)
+    public RegisterCommandHandler(IAuthService authService, IMapper mapper)
     {
         _authService = authService;
-        _jwtService = jwtService;
         _mapper = mapper;
     }
 
-    public async Task<Guid> Handle(RegisterCommand request, CancellationToken cancellationToken)
+    public async Task<Guid?> Handle(RegisterCommand request, CancellationToken cancellationToken)
     {
         // validate request
-        var userId = await _authService._authService.FindByEmailAsync(request.RegisterUserDto.Email);
+        var userId = await _authService.FindByEmailAsync(request.RegisterUserDto.Email);
         if (userId != null)
         {
-            return ReadResult<AuthResponseDto>.Failure("User with this email already exists.");
+            throw new ValidationException("Email is already registered");
         }
 
         var user = _mapper.Map<User>(request.RegisterUserDto);
@@ -33,7 +34,7 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Guid>
         if (!result.Succeeded)
         {
             var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-            return ReadResult<AuthResponseDto>.Failure($"User creation failed: {errors}");
+            throw new ValidationException($"User creation failed: {errors}");
         }
 
         if(request.RegisterUserDto.Roles != null && request.RegisterUserDto.Roles.Any())
@@ -42,29 +43,30 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Guid>
             if (!roleResult.Succeeded)
             {
                 var errors = string.Join(", ", roleResult.Errors.Select(e => e.Description));
-                return ReadResult<AuthResponseDto>.Failure($"Assigning roles failed: {errors}");
+                throw new ValidationException($"Assigning roles failed: {errors}");
             }
         }
 
         // Generate JWT token
-        var token = await _jwtService.GenerateJwtTokenAsync(user);
+        // var token = await _jwtService.GenerateTokenAsync(user);
 
-        return Result<AuthResponseDto>.Success(new AuthResponseDto
-        {
-            UserId = user.Id,
-            Token = token,
-            RefreshToken = token.RefreshToken,
-            ExpiresAt = token.ExpiresAt,
-            Email = user.Email,
-            FirstName = user.FirstName,
-            LastName = user.LastName,
-            UserName = user.UserName,
-            Roles = request.RegisterUserDto.Roles
-        });
+        // return Result<AuthResponseDto>.Success(new AuthResponseDto
+        // {
+        //     UserId = user.Id,
+        //     Token = token,
+        //     RefreshToken = token.RefreshToken,
+        //     ExpiresAt = token.ExpiresAt,
+        //     Email = user.Email,
+        //     FirstName = user.FirstName,
+        //     LastName = user.LastName,
+        //     Roles = request.RegisterUserDto.Roles
+        // });
+
+        return user.Id;
     }
 }
 
-public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<AuthResponse>>
+public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<AuthResponseDto>>
 {
     private readonly IAuthService _authService;
     private readonly IJwtService _jwtService;
@@ -77,17 +79,17 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<AuthResp
         _jwtService = jwtService;
     }
     
-    public async Task<Result<AuthResponse>> Handle(
+    public async Task<Result<AuthResponseDto>> Handle(
         LoginCommand request, 
         CancellationToken cancellationToken)
     {
         var user = await _authService.FindByEmailAsync(request.Email);
         
         if (user == null || !await _authService.CheckPasswordAsync(user, request.Password))
-            return Result<AuthResponse>.Failure("Invalid credentials");
+            return Result<AuthResponseDto>.Failure("Invalid credentials");
         
         if (!user.IsActive)
-            return Result<AuthResponse>.Failure("Account is deactivated");
+            return Result<AuthResponseDto>.Failure("Account is deactivated");
         
         // Generate JWT token
         var token = await _jwtService.GenerateTokenAsync(user);
@@ -95,13 +97,13 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<AuthResp
         // Get user roles
         var roles = await _authService.GetUserRolesAsync(user);
         
-        return Result<AuthResponse>.Success(new AuthResponse
+        return Result<AuthResponseDto>.Success(new AuthResponseDto
         {
-            Token = token,
+            Token = token.AccessToken,
+            RefreshToken = token.RefreshToken,
             UserId = user.Id,
             Email = user.Email,
-            UserName = user.UserName,
-            Roles = roles
+            Roles = [.. roles],
         });
     }
 }
@@ -129,6 +131,6 @@ public class AssignPermissionsCommandHandler : IRequestHandler<AssignPermissions
         
         return result.Succeeded 
             ? Result.Success() 
-            : Result.Failure(result.Errors);
+            : Result.Failure(string.Join("; ", result.Errors.Select(e => e.Description)));
     }
 }

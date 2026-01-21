@@ -1,6 +1,10 @@
-namespace Auth.Domain.Entities;
+using Microsoft.AspNetCore.Identity;
+
+namespace Auth.Domain.Entities.Auth;
 public class Role : IdentityRole<Guid>
 {
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public Guid? CreatedBy { get; set; }
     public string Description { get; set; }
     public bool IsSystemRole { get; set; } = false;
     

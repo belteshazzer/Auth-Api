@@ -4,14 +4,9 @@ using Microsoft.AspNetCore.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-
-// Add MediatR
-builder.Services.AddMediatR(cfg => 
-    cfg.RegisterServicesFromAssembly(typeof(Application.Features.Auth.Commands.Register.RegisterCommand).Assembly));
 
 // Add Identity
 builder.Services.AddIdentity<User, Role>(options =>
@@ -25,20 +20,17 @@ builder.Services.AddIdentity<User, Role>(options =>
         options.User.RequireUniqueEmail = true;
         options.SignIn.RequireConfirmedEmail = false;
     })
-    .AddEntityFrameworkStores<ApplicationDbContext>()
+    .AddEntityFrameworkStores<DbContext>()
     .AddDefaultTokenProviders();
 
-// Add Database
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddDbContext<DbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DbConnection")));
 
-// Add Infrastructure Services
 builder.Services.AddInfrastructureServices(builder.Configuration);
+builder.Services.AddApplicationServices();
 
-// Add Authorization Policies
 builder.Services.AddIdentityAuthorizationPolicies();
 
-// Add JWT Authentication
 builder.Services.AddAuthentication(options =>
     {
         options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -59,7 +51,6 @@ builder.Services.AddAuthentication(options =>
         };
     });
 
-// Add CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll",
@@ -71,7 +62,6 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Configure pipeline
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -80,7 +70,7 @@ if (app.Environment.IsDevelopment())
     // Seed database
     using (var scope = app.Services.CreateScope())
     {
-        var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var context = scope.ServiceProvider.GetRequiredService<DbContext>();
         await context.Database.MigrateAsync();
         
         var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<Role>>();

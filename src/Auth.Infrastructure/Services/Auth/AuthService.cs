@@ -1,6 +1,8 @@
 using System.Security.Claims;
-using Core.Application.Common.Interfaces;
-using Core.Domain.Entities;
+using System.Security.Cryptography;
+using Auth.Application.Interfaces.Auth;
+using Auth.Domain.Entities.Auth;
+using Auth.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,12 +12,12 @@ public class AuthService : IAuthService
 {
     private readonly UserManager<User> _userManager;
     private readonly RoleManager<Role> _roleManager;
-    private readonly ApplicationDbContext _context;
+    private readonly AuthDbContext _context;
     
     public AuthService(
         UserManager<User> userManager,
         RoleManager<Role> roleManager,
-        ApplicationDbContext context)
+        AuthDbContext context)
     {
         _userManager = userManager;
         _roleManager = roleManager;
@@ -23,17 +25,18 @@ public class AuthService : IAuthService
     }
     
     #region User Management
-    public async Task<User> FindByEmailAsync(string email)
+    public async Task<User?> FindByEmailAsync(string email)
     {
-        return await _userManager.FindByEmailAsync(email);
+        
+        return await _userManager.FindByEmailAsync(email) ;
     }
     
-    public async Task<User> FindByIdAsync(Guid userId)
+    public async Task<User?> FindByIdAsync(Guid userId)
     {
-        return await _userManager.FindByIdAsync(userId.ToString());
+        return await _userManager.FindByIdAsync(userId.ToString()) ;
     }
     
-    public async Task<User> FindByNameAsync(string userName)
+    public async Task<User?> FindByNameAsync(string userName)
     {
         return await _userManager.FindByNameAsync(userName);
     }
@@ -83,12 +86,12 @@ public class AuthService : IAuthService
             : await _roleManager.DeleteAsync(role);
     }
     
-    public async Task<Role> FindRoleByIdAsync(Guid roleId)
+    public async Task<Role?> FindRoleByIdAsync(Guid roleId)
     {
         return await _roleManager.FindByIdAsync(roleId.ToString());
     }
     
-    public async Task<Role> FindRoleByNameAsync(string roleName)
+    public async Task<Role?> FindRoleByNameAsync(string roleName)
     {
         return await _roleManager.FindByNameAsync(roleName);
     }
@@ -122,12 +125,11 @@ public class AuthService : IAuthService
     #region Permission Management
     public async Task<IdentityResult> AssignPermissionsToUserAsync(
         User user, 
-        IEnumerable<string> permissions)
+        IEnumerable<Guid> permissions)
     {
-        // Get existing permissions
         var existingPermissions = await _context.UserPermissions
             .Where(up => up.UserId == user.Id)
-            .Select(up => up.Permission.Name)
+            .Select(up => up.Permission.Id)
             .ToListAsync();
             
         // Find permissions to add
@@ -137,10 +139,9 @@ public class AuthService : IAuthService
             
         // Get permission entities
         var permissionEntities = await _context.Permissions
-            .Where(p => permissionsToAdd.Contains(p.Name))
+            .Where(p => permissionsToAdd.Contains(p.Id))
             .ToListAsync();
             
-        // Add user permissions
         foreach (var permission in permissionEntities)
         {
             var userPermission = new UserPermission
@@ -157,14 +158,26 @@ public class AuthService : IAuthService
         
         return IdentityResult.Success;
     }
+
+    public async Task<IdentityResult> RemovePermissionsFromUserAsync(User user, IEnumerable<Guid> permissions)
+    {
+        var userPermissions = await _context.UserPermissions
+            .Where(up => up.UserId == user.Id && permissions.Contains(up.PermissionId))
+            .ToListAsync();
+            
+        _context.UserPermissions.RemoveRange(userPermissions);
+        await _context.SaveChangesAsync();
+        
+        return IdentityResult.Success;
+    }
     
-    public async Task<bool> UserHasPermissionAsync(User user, string permission)
+    public async Task<bool> UserHasPermissionAsync(User user, Guid permission)
     {
         return await _context.UserPermissions
             .Include(up => up.Permission)
             .AnyAsync(up => 
                 up.UserId == user.Id && 
-                up.Permission.Name == permission);
+                up.Permission.Id == permission);
     }
     
     public async Task<IList<string>> GetUserPermissionsAsync(User user)
@@ -231,7 +244,7 @@ public class AuthService : IAuthService
         return refreshToken;
     }
     
-    public async Task<RefreshToken> GetRefreshTokenAsync(string token)
+    public async Task<RefreshToken?> GetRefreshTokenAsync(string token)
     {
         return await _context.RefreshTokens
             .Include(rt => rt.User)
@@ -241,7 +254,7 @@ public class AuthService : IAuthService
     public async Task RevokeRefreshTokenAsync(
         RefreshToken token, 
         string ipAddress, 
-        string replacedByToken = null)
+        string? replacedByToken = null)
     {
         token.Revoked = DateTime.UtcNow;
         token.RevokedByIp = ipAddress;
@@ -256,7 +269,7 @@ public class AuthService : IAuthService
         if (!string.IsNullOrEmpty(token.ReplacedByToken))
         {
             var childToken = await GetRefreshTokenAsync(token.ReplacedByToken);
-            if (childToken != null && childToken.IsActive)
+            if (childToken != null)
             {
                 await RevokeRefreshTokenAsync(childToken, ipAddress);
                 await RevokeDescendantRefreshTokensAsync(childToken, ipAddress);
@@ -266,7 +279,7 @@ public class AuthService : IAuthService
     #endregion
     
     #region Profile Management
-    public async Task<UserProfile> GetUserProfileAsync(Guid userId)
+    public async Task<UserProfile?> GetUserProfileAsync(Guid userId)
     {
         return await _context.UserProfiles
             .FirstOrDefaultAsync(up => up.UserId == userId);

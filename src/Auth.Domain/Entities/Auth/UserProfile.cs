@@ -1,4 +1,4 @@
-namespace Auth.Domain.Entities;
+namespace Auth.Domain.Entities.Auth;
 public class UserProfile
 {
     public Guid Id { get; set; } = Guid.NewGuid();

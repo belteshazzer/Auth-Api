@@ -2,33 +2,30 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
-using Core.Application.Common.Interfaces;
-using Core.Application.Common.Models;
-using Core.Domain.Entities;
+using Auth.Application.Common.Models;
+using Auth.Application.Interfaces.Auth;
+using Auth.Domain.Entities.Auth;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.AspNetCore.Http;
 
-namespace Infrastructure.Services.Auth;
 
-public interface IJwtService
-{
-    Task<TokenResponse> GenerateTokenAsync(User user);
-    Task<TokenResponse> GenerateTokenAsync(User user, string refreshToken);
-    ClaimsPrincipal GetPrincipalFromExpiredToken(string token);
-    string GenerateRefreshToken();
-}
+namespace Auth.Infrastructure.Services.Auth;
 
 public class JwtService : IJwtService
 {
     private readonly IConfiguration _configuration;
-    private readonly IIdentityService _identityService;
+    private readonly IAuthService _authService;
+    private readonly IHttpContextAccessor _httpContextAccessor;
     
     public JwtService(
         IConfiguration configuration,
-        IIdentityService identityService)
+        IAuthService authService,
+        IHttpContextAccessor httpContextAccessor)
     {
         _configuration = configuration;
-        _identityService = identityService;
+        _authService = authService;
+        _httpContextAccessor = httpContextAccessor;
     }
     
     public async Task<TokenResponse> GenerateTokenAsync(User user)
@@ -64,8 +61,12 @@ public class JwtService : IJwtService
         };
     }
     
-    public async Task<TokenResponse> GenerateTokenAsync(User user, string refreshToken)
+    public async Task<TokenResponse> GenerateTokenAsync(string refreshToken)
     {
+        var userId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value;
+        if (userId == null)
+            throw new SecurityTokenException("Invalid refresh token");
+        var user = await _authService.FindByIdAsync(Guid.Parse(userId));
         var token = await GenerateTokenAsync(user);
         token.RefreshToken = refreshToken;
         return token;
@@ -87,7 +88,7 @@ public class JwtService : IJwtService
         };
         
         // Add roles
-        var roles = await _identityService.GetUserRolesAsync(user);
+        var roles = await _authService.GetUserRolesAsync(user);
         foreach (var role in roles)
         {
             claims.Add(new Claim(ClaimTypes.Role, role));
@@ -95,18 +96,18 @@ public class JwtService : IJwtService
         }
         
         // Add permissions
-        var permissions = await _identityService.GetUserPermissionsAsync(user);
+        var permissions = await _authService.GetUserPermissionsAsync(user);
         foreach (var permission in permissions)
         {
             claims.Add(new Claim("Permission", permission));
         }
         
         // Add user-specific claims from database
-        var userClaims = await _identityService.GetUserClaimsAsync(user);
+        var userClaims = await _authService.GetUserClaimsAsync(user);
         claims.AddRange(userClaims);
         
         // Add profile claims if available
-        var profile = await _identityService.GetUserProfileAsync(user.Id);
+        var profile = await _authService.GetUserProfileAsync(user.Id);
         if (profile != null)
         {
             if (profile.DateOfBirth.HasValue)

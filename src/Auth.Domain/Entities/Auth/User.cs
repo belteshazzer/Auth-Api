@@ -1,5 +1,7 @@
 
-namespace Auth.Domain.Entities;
+using Microsoft.AspNetCore.Identity;
+
+namespace Auth.Domain.Entities.Auth;
 
 public class User : IdentityUser<Guid>
 {
@@ -12,4 +14,5 @@ public class User : IdentityUser<Guid>
     public virtual ICollection<UserClaim> Claims { get; set; }
     public virtual ICollection<UserPermission> Permissions { get; set; }
     public virtual UserProfile Profile { get; set; }
+    public virtual ICollection<RefreshToken> RefreshTokens { get; set; } = [];
 }

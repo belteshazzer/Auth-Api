@@ -1,25 +1,26 @@
-using Core.Domain.Entities;
+using Auth.Domain.Entities;
+using Auth.Domain.Entities.Auth;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
-namespace Infrastructure.Persistence;
+namespace Auth.Infrastructure.Persistence;
 
-public class ApplicationDbContext : IdentityDbContext<
-    User, 
-    Role, 
+public class AuthDbContext : IdentityDbContext<
+    User,
+    Role,
     Guid,
     UserClaim,
     UserRole,
-    UserLogin,
+    IdentityUserLogin<Guid>,
     RoleClaim,
-    UserToken>
+    IdentityUserToken<Guid>>
 {
-    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+    public AuthDbContext(DbContextOptions<AuthDbContext> options)
         : base(options)
     {
     }
     
-    // Custom DbSets
     public DbSet<Permission> Permissions { get; set; }
     public DbSet<UserPermission> UserPermissions { get; set; }
     public DbSet<RolePermission> RolePermissions { get; set; }
@@ -30,44 +31,40 @@ public class ApplicationDbContext : IdentityDbContext<
     {
         base.OnModelCreating(builder);
         
-        // Rename Identity tables (optional)
-        builder.Entity<ApplicationUser>().ToTable("Users");
-        builder.Entity<ApplicationRole>().ToTable("Roles");
-        builder.Entity<ApplicationUserRole>().ToTable("UserRoles");
-        builder.Entity<ApplicationUserClaim>().ToTable("UserClaims");
-        builder.Entity<ApplicationRoleClaim>().ToTable("RoleClaims");
-        builder.Entity<ApplicationUserLogin>().ToTable("UserLogins");
-        builder.Entity<ApplicationUserToken>().ToTable("UserTokens");
+        builder.Entity<User>().ToTable("Users");
+        builder.Entity<Role>().ToTable("Roles");
+        builder.Entity<UserRole>().ToTable("UserRoles");
+        builder.Entity<UserClaim>().ToTable("UserClaims");
+        builder.Entity<RoleClaim>().ToTable("RoleClaims");
+        builder.Entity<IdentityUserLogin<Guid>>().ToTable("UserLogins");
+        builder.Entity<IdentityUserToken<Guid>>().ToTable("UserTokens");
         
         // Configure custom entities
         builder.Entity<Permission>(entity =>
         {
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => e.Name).IsUnique();
-            
+
             entity.Property(e => e.Name)
                 .IsRequired()
                 .HasMaxLength(100);
-                
+
             entity.Property(e => e.Description)
                 .HasMaxLength(500);
-                
+
             entity.Property(e => e.Module)
-                .HasMaxLength(100);
-                
-            entity.Property(e => e.Category)
                 .HasMaxLength(100);
         });
         
         builder.Entity<UserPermission>(entity =>
         {
-            entity.HasKey(e => new { e.UserId, e.PermissionId });
-            
+            entity.HasKey(e => e.Id);
+
             entity.HasOne(e => e.User)
-                .WithMany(u => u.UserPermissions)
+                .WithMany(u => u.Permissions)
                 .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
-                
+
             entity.HasOne(e => e.Permission)
                 .WithMany(p => p.UserPermissions)
                 .HasForeignKey(e => e.PermissionId)
@@ -92,36 +89,17 @@ public class ApplicationDbContext : IdentityDbContext<
         builder.Entity<UserProfile>(entity =>
         {
             entity.HasKey(e => e.Id);
-            
+
             entity.HasOne(e => e.User)
                 .WithOne(u => u.Profile)
                 .HasForeignKey<UserProfile>(e => e.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
-                
+
             entity.Property(e => e.Department)
                 .HasMaxLength(100);
-                
+
             entity.Property(e => e.Position)
                 .HasMaxLength(100);
-                
-            entity.Property(e => e.EmployeeId)
-                .HasMaxLength(50);
-        });
-        
-        builder.Entity<RefreshToken>(entity =>
-        {
-            entity.HasKey(e => e.Id);
-            
-            entity.HasOne(e => e.User)
-                .WithMany(u => u.RefreshTokens)
-                .HasForeignKey(e => e.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
-                
-            entity.Property(e => e.Token)
-                .IsRequired()
-                .HasMaxLength(500);
-                
-            entity.HasIndex(e => e.Token);
         });
         
         // Configure Identity with Guids
@@ -129,16 +107,12 @@ public class ApplicationDbContext : IdentityDbContext<
         {
             entity.Property(e => e.Id)
                 .ValueGeneratedOnAdd();
-                
+
             entity.Property(e => e.FirstName)
                 .HasMaxLength(100);
-                
+
             entity.Property(e => e.LastName)
                 .HasMaxLength(100);
-                
-            entity.HasMany(e => e.RefreshTokens)
-                .WithOne(e => e.User)
-                .HasForeignKey(e => e.UserId);
         });
         
         builder.Entity<Role>(entity =>
@@ -148,6 +122,26 @@ public class ApplicationDbContext : IdentityDbContext<
                 
             entity.Property(e => e.Description)
                 .HasMaxLength(500);
+        });
+
+        builder.Entity<RefreshToken>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Token)
+                .IsRequired()
+                .HasMaxLength(500);
+
+            entity.Property(e => e.Expires)
+                .IsRequired();
+
+            entity.Property(e => e.Created)
+                .IsRequired();
+
+            entity.HasOne(e => e.User)
+                .WithMany(u => u.RefreshTokens)
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

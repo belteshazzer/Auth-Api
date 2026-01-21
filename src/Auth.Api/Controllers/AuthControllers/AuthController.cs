@@ -1,10 +1,8 @@
-using Core.Application.Features.Auth.Commands.Login;
-using Core.Application.Features.Auth.Commands.Register;
-using Core.Application.Features.Auth.Commands.RefreshToken;
+using Auth.Application.Features.Auth.Commands.Requests;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Auth.Api.Controllers;
+namespace Auth.Api.Controllers.AuthControllers;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -22,8 +20,8 @@ public class AuthController : ControllerBase
     {
         var result = await _mediator.Send(command);
         
-        if (!result.Succeeded)
-            return BadRequest(result);
+        if (result == null)
+            return BadRequest("Registration failed");
         
         return Ok(result);
     }
