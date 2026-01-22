@@ -77,6 +77,11 @@ public class AuthService : IAuthService
         
         return await _roleManager.CreateAsync(role);
     }
+
+    public async Task<IList<Role>> GetAllRolesAsync()
+    {
+        return await _roleManager.Roles.ToListAsync();
+    }
     
     public async Task<IdentityResult> DeleteRoleAsync(Guid roleId)
     {
@@ -123,6 +128,30 @@ public class AuthService : IAuthService
     #endregion
     
     #region Permission Management
+
+    public async Task<Permission?> CreatePermissionAsync(string permissionName, string description = null, string module = null)
+    {
+        var existingPermission = await _context.Permissions
+            .FirstOrDefaultAsync(p => p.Name == permissionName);
+            
+        if (existingPermission != null)
+            return null; 
+            
+        var permission = new Permission
+        {
+            Id = Guid.NewGuid(),
+            Name = permissionName,
+            Description = description,
+            Module = module
+        };
+        
+        _context.Permissions.Add(permission);
+        await _context.SaveChangesAsync();
+        
+        return permission;
+    }
+
+
     public async Task<IdentityResult> AssignPermissionsToUserAsync(
         User user, 
         IEnumerable<Guid> permissions)
@@ -159,6 +188,41 @@ public class AuthService : IAuthService
         return IdentityResult.Success;
     }
 
+    public async Task<IdentityResult> AssignPermissionsToRoleAsync(
+        Role role, 
+        IEnumerable<Guid> permissions)
+    {
+        var existingPermissions = await _context.RolePermissions
+            .Where(rp => rp.RoleId == role.Id)
+            .Select(rp => rp.Permission.Id)
+            .ToListAsync();
+            
+        // Find permissions to add
+        var permissionsToAdd = permissions
+            .Except(existingPermissions)
+            .ToList();
+            
+        // Get permission entities
+        var permissionEntities = await _context.Permissions
+            .Where(p => permissionsToAdd.Contains(p.Id))
+            .ToListAsync();
+            
+        foreach (var permission in permissionEntities)
+        {
+            var rolePermission = new RolePermission
+            {
+                RoleId = role.Id,
+                PermissionId = permission.Id,
+            };
+            
+            _context.RolePermissions.Add(rolePermission);
+        }
+        
+        await _context.SaveChangesAsync();
+        
+        return IdentityResult.Success;
+    }
+
     public async Task<IdentityResult> RemovePermissionsFromUserAsync(User user, IEnumerable<Guid> permissions)
     {
         var userPermissions = await _context.UserPermissions
@@ -166,6 +230,17 @@ public class AuthService : IAuthService
             .ToListAsync();
             
         _context.UserPermissions.RemoveRange(userPermissions);
+        await _context.SaveChangesAsync();
+        
+        return IdentityResult.Success;
+    }
+    public async Task<IdentityResult> RemovePermissionsFromRoleAsync(Role role, IEnumerable<Guid> permissions)
+    {
+        var rolePermissions = await _context.RolePermissions
+            .Where(rp => rp.RoleId == role.Id && permissions.Contains(rp.PermissionId))
+            .ToListAsync();
+            
+        _context.RolePermissions.RemoveRange(rolePermissions);
         await _context.SaveChangesAsync();
         
         return IdentityResult.Success;
@@ -224,6 +299,12 @@ public class AuthService : IAuthService
         var userPermissions = await GetUserPermissionsAsync(user);
         return permissions.All(p => userPermissions.Contains(p));
     }
+
+    public async Task<IList<Permission>> GetAllPermissionsAsync()
+    {
+        return await _context.Permissions.ToListAsync();
+    }
+
     #endregion
     
     #region Token Management
