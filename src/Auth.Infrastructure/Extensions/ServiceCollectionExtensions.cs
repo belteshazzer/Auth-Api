@@ -1,6 +1,8 @@
-using Core.Application.Common.Interfaces;
+using Auth.Application.Common.Models;
+using Auth.Application.Interfaces.Auth;
+using Auth.Infrastructure.Services.Auth;
 using Infrastructure.Identity.Authorization;
-using Infrastructure.Identity.Services;
+using Infrastructure.Services.Auth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,8 +22,8 @@ public static class ServiceCollectionExtensions
         // Authorization handlers
         services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
         services.AddSingleton<IAuthorizationHandler, RoleWithPermissionAuthorizationHandler>();
-        services.AddSingleton<IAuthorizationHandler, DepartmentAuthorizationHandler>();
-        services.AddSingleton<IAuthorizationHandler, MinimumAgeAuthorizationHandler>();
+        // services.AddSingleton<IAuthorizationHandler, DepartmentAuthorizationHandler>();
+        // services.AddSingleton<IAuthorizationHandler, MinimumAgeAuthorizationHandler>();
         
         // Configure JWT
         services.Configure<JwtSettings>(configuration.GetSection("JwtSettings"));
@@ -42,45 +44,45 @@ public static class ServiceCollectionExtensions
                 policy.RequireRole("Admin", "Manager"));
             
             // Permission-based policies
-            options.AddPolicy("CanViewReports", policy =>
-                policy.Requirements.Add(new PermissionRequirement("ViewReports")));
+            // options.AddPolicy("CanViewReports", policy =>
+            //     policy.Requirements.Add(new PermissionRequirement("ViewReports")));
             
-            options.AddPolicy("CanEditContent", policy =>
-                policy.Requirements.Add(new PermissionRequirement("EditContent")));
+            // options.AddPolicy("CanEditContent", policy =>
+            //     policy.Requirements.Add(new PermissionRequirement("EditContent")));
             
-            options.AddPolicy("CanDeleteUsers", policy =>
-                policy.Requirements.Add(new PermissionRequirement("DeleteUsers")));
+            // options.AddPolicy("CanDeleteUsers", policy =>
+            //     policy.Requirements.Add(new PermissionRequirement("DeleteUsers")));
             
-            // Combined role and permission policies
-            options.AddPolicy("AdminCanDeleteUsers", policy =>
-            {
-                policy.RequireRole("Admin");
-                policy.Requirements.Add(new PermissionRequirement("DeleteUsers"));
-            });
+            // // Combined role and permission policies
+            // options.AddPolicy("AdminCanDeleteUsers", policy =>
+            // {
+            //     policy.RequireRole("Admin");
+            //     policy.Requirements.Add(new PermissionRequirement("DeleteUsers"));
+            // });
             
             // Department-based policies
-            options.AddPolicy("ITDepartmentOnly", policy =>
-                policy.Requirements.Add(new DepartmentRequirement("IT")));
+            // options.AddPolicy("ITDepartmentOnly", policy =>
+            //     policy.Requirements.Add(new DepartmentRequirement("IT")));
             
-            options.AddPolicy("HRDepartmentOnly", policy =>
-                policy.Requirements.Add(new DepartmentRequirement("HR")));
+            // options.AddPolicy("HRDepartmentOnly", policy =>
+            //     policy.Requirements.Add(new DepartmentRequirement("HR")));
             
             // Age-based policies
-            options.AddPolicy("MinimumAge21", policy =>
-                policy.Requirements.Add(new MinimumAgeRequirement(21)));
+            // options.AddPolicy("MinimumAge21", policy =>
+            //     policy.Requirements.Add(new MinimumAgeRequirement(21)));
             
-            // Custom composite policies
-            options.AddPolicy("SeniorITManager", policy =>
-            {
-                policy.RequireRole("Manager");
-                policy.Requirements.Add(new DepartmentRequirement("IT"));
-                policy.Requirements.Add(new MinimumAgeRequirement(30));
-                policy.Requirements.Add(new PermissionRequirement("ApproveBudget"));
-            });
+            // // Custom composite policies
+            // options.AddPolicy("SeniorITManager", policy =>
+            // {
+            //     policy.RequireRole("Manager");
+            //     policy.Requirements.Add(new DepartmentRequirement("IT"));
+            //     policy.Requirements.Add(new MinimumAgeRequirement(30));
+            //     policy.Requirements.Add(new PermissionRequirement("ApproveBudget"));
+            // });
             
-            // Dynamic policy - can be resolved at runtime
-            options.AddPolicy("DynamicPermission", policy =>
-                policy.Requirements.Add(new DynamicPermissionRequirement()));
+            // // Dynamic policy - can be resolved at runtime
+            // options.AddPolicy("DynamicPermission", policy =>
+            //     policy.Requirements.Add(new DynamicPermissionRequirement()));
         });
         
         return services;

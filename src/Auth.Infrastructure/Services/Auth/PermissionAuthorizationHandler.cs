@@ -1,3 +1,4 @@
+using Auth.Application.Interfaces.Auth;
 using Microsoft.AspNetCore.Authorization;
 
 namespace Infrastructure.Services.Auth;
@@ -22,7 +23,7 @@ public class PermissionAuthorizationHandler : AuthorizationHandler<PermissionReq
         if (string.IsNullOrEmpty(userId))
             return;
         
-        var user = await _authService.FindByIdAsync(userId);
+        var user = await _authService.FindByIdAsync(Guid.Parse(userId));
         if (user == null)
             return;
         
@@ -36,9 +37,9 @@ public class PermissionAuthorizationHandler : AuthorizationHandler<PermissionReq
 
 public class PermissionRequirement : IAuthorizationRequirement
 {
-    public string Permission { get; }
+    public Guid Permission { get; }
     
-    public PermissionRequirement(string permission)
+    public PermissionRequirement(Guid permission)
     {
         Permission = permission;
     }

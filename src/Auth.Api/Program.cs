@@ -1,12 +1,20 @@
+using System.Text;
+using Auth.Application.Extensions;
+using Auth.Domain.Entities.Auth;
+using Auth.Infrastructure.Persistence;
 using Infrastructure.Extensions;
-using Infrastructure.Persistence;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(
+    options => { options.CustomSchemaIds(type => type.FullName); }
+);
 
 // Add Identity
 builder.Services.AddIdentity<User, Role>(options =>
@@ -20,10 +28,10 @@ builder.Services.AddIdentity<User, Role>(options =>
         options.User.RequireUniqueEmail = true;
         options.SignIn.RequireConfirmedEmail = false;
     })
-    .AddEntityFrameworkStores<DbContext>()
+    .AddEntityFrameworkStores<AuthDbContext>()
     .AddDefaultTokenProviders();
 
-builder.Services.AddDbContext<DbContext>(options =>
+builder.Services.AddDbContext<AuthDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DbConnection")));
 
 builder.Services.AddInfrastructureServices(builder.Configuration);
