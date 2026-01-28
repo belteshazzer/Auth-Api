@@ -78,7 +78,7 @@ if (app.Environment.IsDevelopment())
     // Seed database
     using (var scope = app.Services.CreateScope())
     {
-        var context = scope.ServiceProvider.GetRequiredService<DbContext>();
+        var context = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
         await context.Database.MigrateAsync();
         
         var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<Role>>();

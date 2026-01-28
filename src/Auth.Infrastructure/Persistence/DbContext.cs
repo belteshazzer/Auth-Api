@@ -143,5 +143,36 @@ public class AuthDbContext : IdentityDbContext<
                 .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
+
+        builder.Entity<RoleClaim>(entity =>
+        {
+            entity.HasOne(rc => rc.Role)
+                .WithMany(r => r.RoleClaims)
+                .HasForeignKey(rc => rc.RoleId)
+                .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        builder.Entity<UserClaim>(entity =>
+        {
+            entity.HasOne(rc => rc.User)
+                .WithMany(r => r.Claims)
+                .HasForeignKey(rc => rc.UserId)
+                .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        builder.Entity<UserRole>(entity =>
+        {
+            entity.HasOne(ur => ur.User)
+                .WithMany(u => u.UserRoles)
+                .HasForeignKey(ur => ur.UserId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            entity.HasOne(ur => ur.Role)
+                .WithMany(r => r.UserRoles)
+                .HasForeignKey(ur => ur.RoleId)
+                .OnDelete(DeleteBehavior.NoAction);
+        });
     }
 }
+
+// $ dotnet ef migrations add initial --project ../Auth.Infrastructure/Auth.Infrastructure.csproj  --startup-project Auth.Api.csproj

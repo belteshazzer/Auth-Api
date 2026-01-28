@@ -20,10 +20,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IJwtService, JwtService>();
         
         // Authorization handlers
-        services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
-        services.AddSingleton<IAuthorizationHandler, RoleWithPermissionAuthorizationHandler>();
-        // services.AddSingleton<IAuthorizationHandler, DepartmentAuthorizationHandler>();
-        // services.AddSingleton<IAuthorizationHandler, MinimumAgeAuthorizationHandler>();
+        services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
+        services.AddScoped<IAuthorizationHandler, RoleWithPermissionAuthorizationHandler>();
+        // services.AddScoped<IAuthorizationHandler, DepartmentAuthorizationHandler>();
+        // services.AddScoped<IAuthorizationHandler, MinimumAgeAuthorizationHandler>();
         
         // Configure JWT
         services.Configure<JwtSettings>(configuration.GetSection("JwtSettings"));
